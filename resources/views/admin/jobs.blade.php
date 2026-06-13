@@ -32,31 +32,34 @@
 
     <nav class="flex-1 px-4 py-4 space-y-1">
         <a href="{{ route('admin.dashboard') }}"
-           class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition
-                  {{ request()->is('admin/dashboard') ? 'bg-[#dcfce7] text-[#2d7f6a]' : 'text-gray-600 hover:bg-gray-50 hover:text-[#2d7f6a]' }}">
+           class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition border-l-4
+                  {{ request()->is('admin/dashboard') ? 'bg-[#dcfce7] text-[#2d7f6a] border-[#2d7f6a] pl-3 shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-[#2d7f6a] border-transparent pl-3' }}">
             <i class="fa-solid fa-gauge-high w-4"></i> Dashboard
         </a>
         <a href="{{ url('admin/users') }}"
-           class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition
-                  {{ request()->is('admin/users') ? 'bg-[#dcfce7] text-[#2d7f6a]' : 'text-gray-600 hover:bg-gray-50 hover:text-[#2d7f6a]' }}">
+           class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition border-l-4
+                  {{ request()->is('admin/users') ? 'bg-[#dcfce7] text-[#2d7f6a] border-[#2d7f6a] pl-3 shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-[#2d7f6a] border-transparent pl-3' }}">
             <i class="fa-solid fa-users w-4"></i> Users
         </a>
         <a href="{{ route('admin.jobs') }}"
-           class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition relative overflow-hidden
-                  {{ request()->is('admin/jobs')
-                     ? 'bg-[#dcfce7] text-[#2d7f6a] border-l-4 border-[#2d7f6a] pl-3 shadow-sm'
-                     : 'text-gray-600 hover:bg-gray-50 hover:text-[#2d7f6a] border-l-4 border-transparent pl-3' }}">
+           class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition border-l-4
+                  {{ request()->is('admin/jobs') ? 'bg-[#dcfce7] text-[#2d7f6a] border-[#2d7f6a] pl-3 shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-[#2d7f6a] border-transparent pl-3' }}">
             <i class="fa-solid fa-briefcase w-4"></i> Job Postings
         </a>
         <a href="{{ url('admin/perusahaan') }}"
-           class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition
-                  {{ request()->is('admin/perusahaan') ? 'bg-[#dcfce7] text-[#2d7f6a]' : 'text-gray-600 hover:bg-gray-50 hover:text-[#2d7f6a]' }}">
+           class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition border-l-4
+                  {{ request()->is('admin/perusahaan') ? 'bg-[#dcfce7] text-[#2d7f6a] border-[#2d7f6a] pl-3 shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-[#2d7f6a] border-transparent pl-3' }}">
             <i class="fa-solid fa-building w-4"></i> Perusahaan
         </a>
         <a href="{{ route('admin.applications') }}"
-           class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition
-                  {{ request()->is('admin/applications') ? 'bg-[#dcfce7] text-[#2d7f6a]' : 'text-gray-600 hover:bg-gray-50 hover:text-[#2d7f6a]' }}">
+           class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition border-l-4
+                  {{ request()->is('admin/applications') ? 'bg-[#dcfce7] text-[#2d7f6a] border-[#2d7f6a] pl-3 shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-[#2d7f6a] border-transparent pl-3' }}">
             <i class="fa-solid fa-file-signature w-4"></i> Lamaran
+        </a>
+        <a href="{{ route('admin.notifications.index') }}"
+           class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition border-l-4
+                  {{ request()->is('admin/notifications*') ? 'bg-[#dcfce7] text-[#2d7f6a] border-[#2d7f6a] pl-3 shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-[#2d7f6a] border-transparent pl-3' }}">
+            <i class="fa-solid fa-bell w-4"></i> Notifikasi
         </a>
     </nav>
 
@@ -179,8 +182,35 @@
                         </div>
                     </div>
                     <div class="bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-full">
-                        Total: {{ count($jobs) }} Jobs
+                        Total: {{ method_exists($jobs, 'total') ? $jobs->total() : count($jobs) }} Jobs
                     </div>
+                </div>
+
+                <!-- FILTER & SEARCH -->
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/80">
+                    <form method="GET" action="{{ route('admin.jobs') }}" class="flex flex-col sm:flex-row gap-3">
+                        <!-- Search -->
+                        <div class="flex-1 relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-sm"></i>
+                            <input type="text" name="search" value="{{ request('search') }}"
+                                placeholder="Cari posisi atau perusahaan..."
+                                class="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2d7f6a]/30 focus:border-[#2d7f6a] bg-white">
+                        </div>
+                        <!-- Filter Status -->
+                        <select name="status" class="border border-gray-200 rounded-xl text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#2d7f6a]/30 bg-white text-gray-600">
+                            <option value="">Semua Status</option>
+                            <option value="Aktif" {{ request('status') == 'Aktif' ? 'selected' : '' }}>Aktif</option>
+                            <option value="Tutup" {{ request('status') == 'Tutup' ? 'selected' : '' }}>Tutup</option>
+                        </select>
+                        <button type="submit" class="bg-[#2d7f6a] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#1a4450] transition">
+                            <i class="fa-solid fa-filter mr-1"></i> Filter
+                        </button>
+                        @if(request('search') || request('status'))
+                            <a href="{{ route('admin.jobs') }}" class="border border-gray-200 text-gray-500 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-100 transition text-center">
+                                Reset
+                            </a>
+                        @endif
+                    </form>
                 </div>
 
                 <div class="overflow-x-auto">
@@ -258,8 +288,17 @@
                     </table>
                 </div>
 
-                <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/80">
-                    <span class="text-xs text-gray-400">Total {{ count($jobs) }} lowongan terdaftar</span>
+                <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/80 flex items-center justify-between">
+                    <span class="text-xs text-gray-400">
+                        @if(method_exists($jobs, 'total'))
+                            Menampilkan {{ $jobs->firstItem() ?? 0 }}–{{ $jobs->lastItem() ?? 0 }} dari {{ $jobs->total() }} lowongan
+                        @else
+                            Total {{ count($jobs) }} lowongan terdaftar
+                        @endif
+                    </span>
+                    @if(method_exists($jobs, 'links'))
+                        <div class="text-sm">{{ $jobs->appends(request()->query())->links() }}</div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -307,6 +346,23 @@
                         class="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition">
                         Ya, Hapus
                     </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL LOGOUT -->
+        <div id="logoutModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[999]">
+            <div class="bg-white w-[340px] rounded-2xl shadow-xl p-6 mx-4">
+                <div class="text-center">
+                    <div class="w-14 h-14 rounded-2xl bg-red-100 text-red-400 flex items-center justify-center mx-auto mb-4">
+                        <i class="fa-solid fa-right-from-bracket text-2xl"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-800 mb-2">Konfirmasi Logout</h3>
+                    <p class="text-sm text-gray-500 mb-5">Apakah Anda yakin ingin keluar?</p>
+                    <div class="flex gap-3">
+                        <button onclick="closeLogout()" class="flex-1 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 font-semibold text-sm">Batal</button>
+                        <a href="{{ route('logout') }}" class="flex-1 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm text-center">Logout</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -361,9 +417,10 @@
 
     // LOGOUT
     function konfirmasiLogout() {
-        if (confirm('Apakah Anda yakin ingin keluar?')) {
-            window.location.href = '{{ route("logout") }}';
-        }
+        document.getElementById('logoutModal').classList.replace('hidden', 'flex');
+    }
+    function closeLogout() {
+        document.getElementById('logoutModal').classList.replace('flex', 'hidden');
     }
 
     // PROFILE DROPDOWN

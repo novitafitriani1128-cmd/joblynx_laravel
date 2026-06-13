@@ -24,6 +24,10 @@ class AdminController extends Controller
         $total_hr = User::where('role', 'hr')->count();
         $total_jobs = Job::count();
         $total_applications = Application::count();
+        $total_notifications = \App\Models\NotificationBroadcast::count();
+        $notif_draft         = \App\Models\NotificationBroadcast::where('status', 'draft')->count();
+        $notif_published     = \App\Models\NotificationBroadcast::where('status', 'published')->count();
+        $total_export_today  = \App\Models\ExportLog::whereDate('created_at', today())->count();
 
         $status = [
             'Dikirim'    => Application::where('status', 'Dikirim')->count(),
@@ -70,9 +74,13 @@ class AdminController extends Controller
             ->values();
 
         $users = User::where('role', 'user')
-    ->latest()
-    ->limit(8)
-    ->get();
+        ->latest()
+        ->limit(8)
+        ->get();
+        $total_notifications = \App\Models\NotificationBroadcast::count();
+        $notif_draft         = \App\Models\NotificationBroadcast::where('status', 'draft')->count();
+        $notif_published     = \App\Models\NotificationBroadcast::where('status', 'published')->count();
+        $total_export_today  = \App\Models\ExportLog::whereDate('created_at', today())->count();
 
         // TAMBAHAN NOTIFIKASI
         $user_id = auth()->id();
@@ -96,7 +104,11 @@ class AdminController extends Controller
             'latest_activity',
             'users',
             'unread_count',
-            'notif_result'
+            'notif_result',
+            'total_notifications',
+            'notif_draft',
+            'notif_published',
+            'total_export_today'
         ));
     }
 
@@ -108,40 +120,103 @@ class AdminController extends Controller
     public function users(Request $request)
     {
         $search = $request->search;
+        $role   = $request->role;
 
-        $users = User::where('role', 'user')
+        $users = User::whereIn('role', ['user', 'hr'])
+
+            // Search
             ->when($search, function ($q) use ($search) {
-                $q->where('email', 'like', "%$search%")
-                  ->orWhere('nama_lengkap', 'like', "%$search%");
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('id', $search)
+                        ->orWhere('nama_lengkap', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
             })
+
+            // Filter Role
+            ->when($role, function ($q) use ($role) {
+                $q->where('role', $role);
+            })
+
             ->latest()
             ->paginate(10);
 
         $user_id = auth()->id();
-        $unread_count = DB::table('notifications')->where('user_id', $user_id)->where('is_read', 0)->count();
-        $notif_result = DB::table('notifications')->where('user_id', $user_id)->orderBy('created_at', 'desc')->limit(10)->get();
-        return view('admin.users', compact('users', 'search', 'unread_count', 'notif_result'));    
-    }
 
+        $unread_count = DB::table('notifications')
+            ->where('user_id', $user_id)
+            ->where('is_read', 0)
+            ->count();
+
+        $notif_result = DB::table('notifications')
+            ->where('user_id', $user_id)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        return view('admin.users', compact(
+            'users',
+            'search',
+            'role',
+            'unread_count',
+            'notif_result'
+        ));
+    }
     /*
     |----------------------------------------------------------------------
     | JOBS (FIX ERROR ROUTE)
     |----------------------------------------------------------------------
     */
-    public function jobs()
+    public function jobs(Request $request)
     {
+        $search = $request->search;
+        $status = $request->status;
+
         $jobs = DB::table('jobs as j')
-        ->join('perusahaans as p', 'j.perusahaan_id', '=', 'p.id')
-        ->join('users as u', 'p.user_id', '=', 'u.id')
-        ->select('j.*', 'p.nama_perusahaan', 'u.nama_lengkap as nama_hr')
-         ->whereNull('j.deleted_at')
-        ->get();
-    
+            ->join('perusahaans as p', 'j.perusahaan_id', '=', 'p.id')
+            ->join('users as u', 'p.user_id', '=', 'u.id')
+            ->select(
+                'j.*',
+                'p.nama_perusahaan',
+                'u.nama_lengkap as nama_hr'
+            )
+            ->whereNull('j.deleted_at')
+
+            // Search
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('j.id', $search)
+                        ->orWhere('j.posisi', 'like', "%{$search}%")
+                        ->orWhere('j.lokasi', 'like', "%{$search}%")
+                        ->orWhere('p.nama_perusahaan', 'like', "%{$search}%")
+                        ->orWhere('u.nama_lengkap', 'like', "%{$search}%");
+                });
+            })
+
+            // Filter Status
+            ->when($status, function ($q) use ($status) {
+                $q->where('j.status_loker', $status);
+            })
+
+            ->get();
+
         $user_id = auth()->id();
-        $unread_count = DB::table('notifications')->where('user_id', $user_id)->where('is_read', 0)->count();
-        $notif_result = DB::table('notifications')->where('user_id', $user_id)->orderBy('created_at', 'desc')->limit(10)->get();
+
+        $unread_count = DB::table('notifications')
+            ->where('user_id', $user_id)
+            ->where('is_read', 0)
+            ->count();
+
+        $notif_result = DB::table('notifications')
+            ->where('user_id', $user_id)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
         return view('admin.jobs', [
-            'jobs' => $jobs ?? collect(),
+            'jobs' => $jobs,
+            'search' => $search,
+            'status' => $status,
             'unread_count' => $unread_count,
             'notif_result' => $notif_result,
         ]);
@@ -152,27 +227,58 @@ class AdminController extends Controller
     | PERUSAHAAN (FIX COUNT NULL ERROR)
     |----------------------------------------------------------------------
     */
-    public function perusahaan()
+    public function perusahaan(Request $request)
     {
+        $search = $request->search;
+        $status = $request->status;
+
         $perusahaan = DB::table('perusahaans as p')
-        ->join('users as u', 'p.user_id', '=', 'u.id')
-        ->select(
-            'p.*',
-            'u.nama_lengkap as nama_hr',
-            'u.email as email_hr'
-        )
-        ->whereNull('p.deleted_at')
-        ->latest('p.created_at')
-        ->get();
+            ->join('users as u', 'p.user_id', '=', 'u.id')
+            ->select(
+                'p.*',
+                'u.nama_lengkap as nama_hr',
+                'u.email as email_hr'
+            )
+            ->whereNull('p.deleted_at')
+
+            // SEARCH
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('p.id', $search)
+                        ->orWhere('p.nama_perusahaan', 'like', "%{$search}%")
+                        ->orWhere('u.nama_lengkap', 'like', "%{$search}%")
+                        ->orWhere('u.email', 'like', "%{$search}%");
+                });
+            })
+
+            // FILTER STATUS
+            ->when($status, function ($q) use ($status) {
+                $q->where('p.status', $status);
+            })
+
+            ->latest('p.created_at')
+            ->paginate(10);
 
         $user_id = auth()->id();
-        $unread_count = DB::table('notifications')->where('user_id', $user_id)->where('is_read', 0)->count();
-        $notif_result = DB::table('notifications')->where('user_id', $user_id)->orderBy('created_at', 'desc')->limit(10)->get();
-        return view('admin.perusahaan', [
-        'perusahaan' => $perusahaan ?? collect(),
-        'unread_count' => $unread_count,
-        'notif_result' => $notif_result,
-        ]);
+
+        $unread_count = DB::table('notifications')
+            ->where('user_id', $user_id)
+            ->where('is_read', 0)
+            ->count();
+
+        $notif_result = DB::table('notifications')
+            ->where('user_id', $user_id)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        return view('admin.perusahaan', compact(
+            'perusahaan',
+            'search',
+            'status',
+            'unread_count',
+            'notif_result'
+        ));
     }
 
     /*
@@ -357,6 +463,9 @@ class AdminController extends Controller
     */
     public function applications(Request $request)
     {
+        $search = $request->search;
+        $status = $request->status;
+
         $applications = DB::table('applications as a')
             ->join('pelamars as p', 'a.pelamar_id', '=', 'p.id')
             ->join('users as u', 'p.user_id', '=', 'u.id')
@@ -367,16 +476,47 @@ class AdminController extends Controller
                 'u.email',
                 DB::raw("COALESCE(j.posisi, 'Posisi Dihapus') as posisi")
             )
-            ->whereNull('a.deleted_at')  // ← lamaran yang dihapus
-            ->whereNull('u.deleted_at')  // ← user yang dihapus
+            ->whereNull('a.deleted_at')
+            ->whereNull('u.deleted_at')
+
+            // Search
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('a.id', $search)
+                        ->orWhere('u.nama_lengkap', 'like', "%{$search}%")
+                        ->orWhere('u.email', 'like', "%{$search}%")
+                        ->orWhere('j.posisi', 'like', "%{$search}%");
+                });
+            })
+
+            // Filter Status
+            ->when($status, function ($q) use ($status) {
+                $q->where('a.status', $status);
+            })
+
             ->orderBy('a.tanggal_lamar', 'desc')
             ->paginate(10);
 
         $user_id = auth()->id();
-        $unread_count = DB::table('notifications')->where('user_id', $user_id)->where('is_read', 0)->count();
-        $notif_result = DB::table('notifications')->where('user_id', $user_id)->orderBy('created_at', 'desc')->limit(10)->get();
 
-        return view('admin.applications', compact('applications', 'unread_count', 'notif_result'));
+        $unread_count = DB::table('notifications')
+            ->where('user_id', $user_id)
+            ->where('is_read', 0)
+            ->count();
+
+        $notif_result = DB::table('notifications')
+            ->where('user_id', $user_id)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        return view('admin.applications', compact(
+            'applications',
+            'search',
+            'status',
+            'unread_count',
+            'notif_result'
+        ));
     }
 
     /*

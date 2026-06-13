@@ -66,6 +66,14 @@
                       : 'text-gray-600 hover:bg-gray-50 hover:text-[#2d7f6a] border-l-4 border-transparent pl-3' }}">
                 <i class="fa-solid fa-file-signature w-4"></i> Lamaran
             </a>
+
+            <a href="{{ route('admin.notifications.index') }}"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition border-l-4
+                    {{ request()->is('admin/notifications*')
+                        ? 'bg-[#dcfce7] text-[#2d7f6a] border-[#2d7f6a] pl-3 shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-[#2d7f6a] border-transparent pl-3' }}">
+                <i class="fa-solid fa-bell w-4"></i> Notifikasi
+            </a>
         </nav>
         <div class="px-4 py-4 border-t border-gray-100">
             <a href="javascript:void(0)" onclick="konfirmasiLogout()"
@@ -319,6 +327,40 @@
                         @else
                             <div class="h-1.5 rounded-full bg-orange-200 opacity-40 w-full"></div>
                         @endif
+                    </div>
+                </div>
+
+                {{-- Card: Total Notifikasi --}}
+                <div class="bg-white rounded-2xl shadow-md border border-gray-200 p-5 hover:shadow-lg transition hover:-translate-y-0.5 duration-200">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="text-3xl font-black text-[#2d7f6a]">{{ $total_notifications ?? 0 }}</div>
+                            <div class="text-[11px] text-gray-400 font-bold uppercase mt-1 tracking-wide">Notifikasi</div>
+                        </div>
+                        <div class="w-11 h-11 rounded-xl bg-[#dcfce7] flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-bell text-[#2d7f6a] text-base"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center gap-2">
+                        <span class="text-[10px] bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full font-bold">Draft: {{ $notif_draft ?? 0 }}</span>
+                        <span class="text-[10px] bg-[#dcfce7] text-[#2d7f6a] px-2 py-0.5 rounded-full font-bold">Published: {{ $notif_published ?? 0 }}</span>
+                    </div>
+                </div>
+
+                {{-- Card: Export Hari Ini --}}
+                <div class="bg-white rounded-2xl shadow-md border border-gray-200 p-5 hover:shadow-lg transition hover:-translate-y-0.5 duration-200">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="text-3xl font-black text-blue-500">{{ $total_export_today ?? 0 }}</div>
+                            <div class="text-[11px] text-gray-400 font-bold uppercase mt-1 tracking-wide">Export Hari Ini</div>
+                        </div>
+                        <div class="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-file-export text-blue-500 text-base"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 h-1.5 rounded-full bg-blue-100 overflow-hidden">
+                        <div class="h-1.5 rounded-full bg-blue-400 transition-all duration-700"
+                            style="width: {{ $total_export_today > 0 ? '60' : '0' }}%"></div>
                     </div>
                 </div>
 
@@ -599,8 +641,6 @@
                     });
                 });
             </script>
-
-            <!-- MODAL UBAH PASSWORD -->
             <!-- MODAL UBAH PASSWORD -->
             <div id="changePasswordModal" style="display:none"
                 class="fixed inset-0 bg-black/40 items-center justify-center z-[999]">
@@ -636,6 +676,23 @@
             </div>
 
         </main>
+    </div>
+
+    <!-- MODAL LOGOUT -->
+    <div id="logoutModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[999]">
+        <div class="bg-white w-[340px] rounded-2xl shadow-xl p-6 mx-4">
+            <div class="text-center">
+                <div class="w-14 h-14 rounded-2xl bg-red-100 text-red-400 flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-right-from-bracket text-2xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-gray-800 mb-2">Konfirmasi Logout</h3>
+                <p class="text-sm text-gray-500 mb-5">Apakah Anda yakin ingin keluar?</p>
+                <div class="flex gap-3">
+                    <button onclick="closeLogout()" class="flex-1 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 font-semibold text-sm">Batal</button>
+                    <a href="{{ route('logout') }}" class="flex-1 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm text-center">Logout</a>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -690,9 +747,10 @@
         }
 
         function konfirmasiLogout() {
-            if (confirm('Apakah Anda yakin ingin keluar?')) {
-                window.location.href = '{{ route('logout') }}';
-            }
+            document.getElementById('logoutModal').classList.replace('hidden', 'flex');
+        }
+        function closeLogout() {
+            document.getElementById('logoutModal').classList.replace('flex', 'hidden');
         }
         document.addEventListener('click', function(e) {
             const pbtn = document.getElementById('pbtn');

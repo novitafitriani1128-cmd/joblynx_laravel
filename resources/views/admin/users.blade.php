@@ -69,6 +69,14 @@
                   {{ request()->is('admin/applications') ? 'bg-[#dcfce7] text-[#2d7f6a]' : 'text-gray-600 hover:bg-gray-50 hover:text-[#2d7f6a]' }}">
             <i class="fa-solid fa-file-signature w-4"></i> Lamaran
         </a>
+
+        <a href="{{ route('admin.notifications.index') }}"
+        class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition border-l-4
+                {{ request()->is('admin/notifications*')
+                    ? 'bg-[#dcfce7] text-[#2d7f6a] border-[#2d7f6a] pl-3 shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-[#2d7f6a] border-transparent pl-3' }}">
+            <i class="fa-solid fa-bell w-4"></i> Notifikasi
+        </a>
     </nav>
 
     <div class="px-4 py-4 border-t border-gray-100">
@@ -194,9 +202,46 @@
                             <p class="text-white/60 text-[11px]">Semua akun terdaftar di JOBLYNX</p>
                         </div>
                     </div>
-                    <div class="bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-full">
-                        Total: {{ $users->total() }} User
+                    <div class="flex items-center gap-2">
+                        <div class="bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-full">
+                            Total: {{ $users->total() }} User
+                        </div>
+                        <a href="{{ route('admin.users.export.excel', request()->query()) }}"
+                            class="flex items-center gap-1.5 bg-green-500 text-white font-bold text-sm px-4 py-2 rounded-xl hover:bg-green-600 transition shadow-sm">
+                            <i class="fa-solid fa-file-excel text-xs"></i> Export Excel
+                        </a>
+                        <a href="{{ route('admin.users.export.pdf', request()->query()) }}"
+                            class="flex items-center gap-1.5 bg-red-500 text-white font-bold text-sm px-4 py-2 rounded-xl hover:bg-red-600 transition shadow-sm">
+                            <i class="fa-solid fa-file-pdf text-xs"></i> Export PDF
+                        </a>
                     </div>
+                </div>
+
+                <!-- FILTER & SEARCH -->
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/80">
+                    <form method="GET" action="{{ url('admin/users') }}" class="flex flex-col sm:flex-row gap-3">
+                        <!-- Search -->
+                        <div class="flex-1 relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-sm"></i>
+                            <input type="text" name="search" value="{{ request('search') }}"
+                                placeholder="Cari nama atau email..."
+                                class="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2d7f6a]/30 focus:border-[#2d7f6a] bg-white">
+                        </div>
+                        <!-- Filter Role -->
+                        <select name="role" class="border border-gray-200 rounded-xl text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#2d7f6a]/30 bg-white text-gray-600">
+                            <option value="">Semua Role</option>
+                            <option value="hr" {{ request('role') == 'hr' ? 'selected' : '' }}>HR</option>
+                            <option value="user" {{ request('role') == 'user' ? 'selected' : '' }}>User</option>
+                        </select>
+                        <button type="submit" class="bg-[#2d7f6a] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#1a4450] transition">
+                            <i class="fa-solid fa-filter mr-1"></i> Filter
+                        </button>
+                        @if(request('search') || request('role'))
+                            <a href="{{ url('admin/users') }}" class="border border-gray-200 text-gray-500 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-100 transition text-center">
+                                Reset
+                            </a>
+                        @endif
+                    </form>
                 </div>
 
                 <!-- TABLE -->
@@ -301,7 +346,7 @@
                     <span class="text-xs text-gray-400">
                         Menampilkan {{ $users->firstItem() ?? 0 }}–{{ $users->lastItem() ?? 0 }} dari {{ $users->total() }} user
                     </span>
-                    <div class="text-sm">{{ $users->links() }}</div>
+                    <div class="text-sm">{{ $users->appends(request()->query())->links() }}</div>
                 </div>
 
             </div>
@@ -408,6 +453,23 @@
     </main>
 </div>
 
+<!-- MODAL LOGOUT -->
+<div id="logoutModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[999]">
+    <div class="bg-white w-[340px] rounded-2xl shadow-xl p-6 mx-4">
+        <div class="text-center">
+            <div class="w-14 h-14 rounded-2xl bg-red-100 text-red-400 flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-right-from-bracket text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-800 mb-2">Konfirmasi Logout</h3>
+            <p class="text-sm text-gray-500 mb-5">Apakah Anda yakin ingin keluar?</p>
+            <div class="flex gap-3">
+                <button onclick="closeLogout()" class="flex-1 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 font-semibold text-sm">Batal</button>
+                <a href="{{ route('logout') }}" class="flex-1 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm text-center">Logout</a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     // SIDEBAR
     function toggleSidebar() {
@@ -443,9 +505,10 @@
 
     // LOGOUT KONFIRMASI
     function konfirmasiLogout() {
-        if (confirm('Apakah Anda yakin ingin keluar?')) {
-            window.location.href = '{{ route("logout") }}';
-        }
+        document.getElementById('logoutModal').classList.replace('hidden', 'flex');
+    }
+    function closeLogout() {
+        document.getElementById('logoutModal').classList.replace('flex', 'hidden');
     }
 
     // MODAL: Detail
